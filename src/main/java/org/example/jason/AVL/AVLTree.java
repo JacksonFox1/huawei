@@ -1,4 +1,4 @@
-package org.example.jason;
+package org.example.jason.AVL;
 
 public class AVLTree<V> {
     private AVLTreeNode mRoot;    // 根结点

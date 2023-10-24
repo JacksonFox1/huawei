@@ -3,7 +3,7 @@
  * To change this template file, choose Tools | Templates
  * and open the template in the editor.
  */
-package org.example.jason.AVLwithHash;
+package org.example.jason.avl2.structure;
 
 public class Demo {
 

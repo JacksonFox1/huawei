@@ -16,6 +16,8 @@ public class AVLTree<V> {
     gid查找，因此必须建立一个gid和Node的映射
      */
     Map<Long, AVLNode<V> > gidToNode;
+
+    //根节点的变动！！！
     AVLNode<V> root;
 
     public AVLTree() {
@@ -41,16 +43,28 @@ public class AVLTree<V> {
     }
 
     /**
-     * 只修改了
+     * 重新计算该节点的高度，和size，并自下而上全部更新
      * @param node
      */
-    private void updateDown(AVLNode<V> node) {
+    private void update(AVLNode<V> node) {
         node.height = max(getHeight(node.left), getHeight(node.right));
         if (node.tombstone) {
-            node.size = node.left.size + node.right.size;
+            node.size = getSize(node.left) + getSize(node.right);
         } else {
-            node.size = node.left.size + node.right.size + 1;
+            node.size = getSize(node.left) + getSize(node.right) + 1;
         }
+        //有必要吗？？？
+        AVLNode<V> p = node.parent;
+        while (p != null) {
+            p.height = max(getHeight(p.left), getHeight(p.right));
+            if (p.tombstone) {
+                p.size = getSize(p.left) + getSize(p.right);
+            } else {
+                p.size = getSize(p.left) + getSize(p.right) + 1;
+            }
+            p = p.parent;
+        }
+
     }
 
     /**
@@ -60,6 +74,12 @@ public class AVLTree<V> {
      * @return
      */
     public AVLNode<V> rightRotation(AVLNode<V> node) {
+        //维护根节点
+        boolean isRoot = false;
+        if (node == this.root) {
+            isRoot = true;
+        }
+
         AVLNode<V> left = node.left;
         AVLNode<V> leftRight = left.right;
 
@@ -69,9 +89,12 @@ public class AVLTree<V> {
         left.right = node;
         node.parent = left;
 
-        updateDown(node);
-        updateDown(left);
+        update(node);
+        update(left);
 
+        if (isRoot) {
+            this.root = left;
+        }
         return left;
     }
 
@@ -82,6 +105,12 @@ public class AVLTree<V> {
      * @return
      */
     public AVLNode<V> leftRotation(AVLNode<V> node) {
+        //维护根节点
+        boolean isRoot = false;
+        if (node == this.root) {
+            isRoot = true;
+        }
+
         AVLNode<V> right = node.right;
         AVLNode<V> rightLeft = right.left;
 
@@ -92,8 +121,12 @@ public class AVLTree<V> {
         node.parent = right;
 
         //注意update的顺序，自底向上update
-        updateDown(node);
-        updateDown(right);
+        update(node);
+        update(right);
+
+        if (isRoot) {
+            this.root = right;
+        }
 
         return right;
     }
@@ -174,7 +207,7 @@ public class AVLTree<V> {
     }
 
     /**
-     * 根据gid插入
+     * 在gid节点后面插入
      * @param gid
      * @param value
      */
@@ -184,7 +217,7 @@ public class AVLTree<V> {
     }
 
     /**
-     * 根据pos插入值
+     * 在pos后面插入
      * @param pos
      * @param value
      */
@@ -194,10 +227,94 @@ public class AVLTree<V> {
     }
 
     private void delete(AVLNode<V> node) {
+        if (node == null) {
+            return;
+        }
+        //记得rebalance！！！
+        Long gid = node.gid;
+        //因为不是使用递归法删除，所以必须找到父节点，并判断是左孩子还是右孩子
+        boolean isLeft;
         //注意parent可能为空
         AVLNode<V> parent = node.parent;
-        if (node.left == )
 
+        //为空表示正在删除根节点
+//      if (parent == null) {
+        if (node == this.root) {
+            //如果node没有右节点，返回本身；有右子树则返回下一个节点
+            AVLNode<V> nextNode = findSuccessor(node);
+            //找到根节点的左孩子
+            AVLNode<V> rootLeft = node.left;
+            //nextNode和node相等，表示右子树为空，正在删除节点本身
+            if (nextNode == node) {
+                //解除两个对原根节点的引用
+                node.left = null;
+                rootLeft.parent = null;
+                this.root = rootLeft;
+                gidToNode.remove(node.gid);
+            } else {
+                node.gid = nextNode.gid;
+                node.values = nextNode.values;
+                //删除对老节点的引用
+                gidToNode.remove(gid);
+                //注意下面两句顺序不能颠倒
+                delete(nextNode);
+                gidToNode.put(node.gid, node);
+            }
+        //并不是在删除根节点，把下一个节点顶替上来
+        } else {
+            AVLNode<V> nextNode = findSuccessor(node);
+            if (parent.left == node) {
+                isLeft = true;
+            } else {
+                isLeft = false;
+            }
+            //最终都会流向这个分支，所以只需要在这里rebalance
+            if (node.left == null && node.right == null) {
+                if (isLeft) {
+                    node.parent.left = null;
+                } else {
+                    node.parent.right = null;
+                }
+                node.parent = null;
+                update(parent);
+                rebalance(parent, parent.parent);
+                gidToNode.remove(gid);
+            } else if (node.left == null) {
+//                AVLNode<V> nodeRight = node.right;
+//                parent.right = nodeRight;
+//                nodeRight.parent = parent;
+//                node.parent = null;
+//                node.right = null;
+                node.gid = nextNode.gid;
+                node.values = nextNode.values;
+                //删除对老节点的引用
+                gidToNode.remove(gid);
+                //注意下面两句顺序不能颠倒
+                delete(nextNode);
+                gidToNode.put(node.gid, node);
+//                update(parent);
+//                rebalance(parent, parent.parent);
+//                gidToNode.remove(gid);
+            } else if (node.right == null) {
+                if (isLeft) {
+                    parent.left = node.left;
+                } else {
+                    parent.right = node.left;
+                }
+                node.parent = null;
+                gidToNode.remove(gid);
+                update(parent);
+                rebalance(parent, parent.parent);
+            } else {
+                node.gid = nextNode.gid;
+                node.values = nextNode.values;
+                //删除对老节点的引用
+                gidToNode.remove(gid);
+                //注意下面两句顺序不能颠倒
+                delete(nextNode);
+                gidToNode.put(node.gid, node);
+            }
+        }
     }
 
     public void delete(Long gid) {
@@ -210,28 +327,6 @@ public class AVLTree<V> {
         delete(node);
     }
 
-    private AVLNode<V> delete(AVLNode<V> root, Long key) {
-        if (root == null) {
-            return null;
-        }
-        if (key.compareTo(root.key) < 0) {
-            root.left = delete(root.left, key);
-        } else if (key.compareTo(root.key) > 0) {
-            root.right = delete(root.right, key);
-        } else {
-            if (root.left == null) {
-                return root.right;
-            } else if (root.right == null) {
-                return root.left;
-            }
-            root.key = findSuccessor(root).key;
-            root.right = delete(root.right, root.key);
-        }
-        if (root != null) {
-            root = rebalance(root);
-        }
-        return root;
-    }
 
     private AVLNode<V> rebalance(AVLNode<V> node, AVLNode<V> parent) {
         node.height = 1 + max(getHeight(node.left), getHeight(node.right));

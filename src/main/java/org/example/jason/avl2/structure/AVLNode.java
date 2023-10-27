@@ -11,11 +11,11 @@ import org.example.jason.avl2.config.ConstantData;
 
 public class AVLNode<V> {
     //key为gid
-    Long key;
+    Long gid;
     V values;
     //该节点所在的高度
     int height;
-    //树的大小
+    //树的大小，一是起到pos的作用，二和key的作用类似，都是起到加速查询的作用
     int size;
     //是否删除的标记，为true则为被删除，为false则未被删除
     boolean tombstone;
@@ -24,19 +24,17 @@ public class AVLNode<V> {
 
     AVLNode<V> right;
 
+    AVLNode<V> parent;
+
     AVLNode(V value) {
-        this.key = Long.parseLong(ConstantData.MACHINE_ID + (ConstantData.counter++).toString());
+        this.gid = Long.parseLong(ConstantData.MACHINE_ID + (ConstantData.counter++).toString());
         this.values = value;
         this.height = 1;
         this.size = 1;
         this.tombstone = false;
         this.left = null;
         this.right = null;
+        this.parent = null;
     }
 
-
-//    private Integer hash(K key) {
-//        return Objects.hashCode(key);
-//    }
-   
 }

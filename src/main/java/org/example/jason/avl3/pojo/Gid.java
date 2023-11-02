@@ -13,4 +13,8 @@ public class Gid {
         this.counter = counter;
     }
 
+    public Gid() {
+
+    }
+
 }

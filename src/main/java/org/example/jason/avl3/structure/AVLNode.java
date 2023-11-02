@@ -9,7 +9,7 @@ import org.example.jason.avl3.pojo.NodeOffset;
 @Data
 public class AVLNode {
     static final int SPACE_SIZE = 10;
-    //该节点初始元素的Gid
+    //该节点初始元素的Gid，无论是否被删除
     Gid gid;
     //用于存储实际的字符数据，大小暂定为10
     Character[] text;
@@ -32,7 +32,7 @@ public class AVLNode {
     AVLNode parent;
     //客户端传来的数据。用于YATA算法，第一个字符的前驱
     Gid headOrigin;
-    //客户端传来的数据。用于YATA算法，最后一个字符（无论是否被标记删除）的后继
+    //客户端传来的数据。用于YATA算法，最后一个字符（无论是否被标记删除）的后继，无论是否被删除
     Gid endRightOrigin;
 
     /**
@@ -109,7 +109,7 @@ public class AVLNode {
      */
     public boolean isDeleted(int offset) {
         if (offset < 0) {
-            System.out.println("error! exception in isDeleted()");
+            System.out.println("error! exception occurred in isDeleted()");
         }
         return informations[offset].isDeleted();
     }
@@ -145,6 +145,92 @@ public class AVLNode {
 //        }
 
         return new NodeOffset(node, offset - 1);
+    }
+
+    public boolean deleteCharacterByOffset(int offset) {
+        if (!informations[offset].isDeleted()) {
+            informations[offset].setDeleted(true);
+            this.setTreeSize(this.getTreeSize() - 1);
+            this.setValidDataSize(this.getValidDataSize() - 1);
+            return true;
+        }
+        return false;
+    }
+
+    public Gid getGidByOffset(int offset) {
+        Gid gid = new Gid();
+        gid.setClientId(this.gid.getClientId());
+        gid.setCounter(this.gid.getCounter() + offset);
+        return gid;
+    }
+
+    public int getGidCounterByOffset(int offset) {
+        return this.gid.getCounter() + offset;
+    }
+
+    public boolean insertCharacter(int offset, CharacterMessage message) {
+        text[offset] = message.getCharacter();
+        informations[offset] = new CharacterInfo(message);
+        this.treeSize++;
+        this.validDataSize++;
+        this.allDataSize++;
+        this.endRightOrigin = message.getRightOriginGid();
+        return true;
+    }
+
+    /**
+     * 在节点分裂时更新自身，采用安全的方式,擦除[offset, SPACE_SIZE]后的数据.
+     * @param offset 假设为5，则保留下标为0至下标为4的节点
+     */
+    public void frontSplit(int offset) {
+        int validDataSize = 0;
+        for (int i = offset; i < SPACE_SIZE; ++i) {
+            text[i] = null;
+            informations[i] = null;
+        }
+        for (int i = 0; i < offset; ++i) {
+            if (!isDeleted(i)) {
+                validDataSize++;
+            }
+        }
+        this.treeSize = this.treeSize - this.allDataSize + offset;
+        this.validDataSize = validDataSize;
+        this.allDataSize = offset;
+        this.endRightOrigin = informations[offset - 1].getRightOriginGid();
+    }
+
+    /**
+     * 获取一个节点的子节点，并不加入到树结构，即不会继承height，size等属性
+     * 左开右闭，从0开始计数
+     * @param begin
+     * @param end
+     * @return
+     */
+    public AVLNode subAVLNode(int begin, int end) {
+        AVLNode eden = new AVLNode();
+        Gid edenGid = new Gid();
+        int validDataSize = 0;
+
+        edenGid.setClientId(this.gid.getClientId());
+        edenGid.setCounter(this.gid.getCounter() + begin);
+        eden.setGid(edenGid);
+
+        for (int i = begin; i < end; ++i) {
+            if (!isDeleted(i)) {
+                validDataSize++;
+            }
+            eden.text[i - begin] = this.text[i];
+            eden.informations[i - begin] = this.informations[i];
+        }
+        eden.validDataSize = validDataSize;
+
+        eden.height = 1;
+        eden.allDataSize = end - begin;
+        eden.treeSize = end - begin;
+        eden.headOrigin = this.informations[begin].getLeftOriginGid();
+        eden.endRightOrigin = this.informations[end - 1].getRightOriginGid();
+
+        return eden;
     }
 
 }

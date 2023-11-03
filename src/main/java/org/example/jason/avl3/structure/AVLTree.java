@@ -8,12 +8,17 @@ import java.util.HashMap;
 import java.util.Map;
 
 public class AVLTree {
+
+    //虚拟树的头节点，参考红黑树的实现
+    AVLNode virtualRoot;
+
     AVLNode root;
 
     //暂未使用，后续开发
     Map<Gid, NodeOffset> gidToNodeOffset;
 
     public AVLTree() {
+        virtualRoot = new AVLNode();
         root = null;
         gidToNodeOffset = new HashMap<>();
     }
@@ -85,7 +90,7 @@ public class AVLTree {
         while (node.right != null) {
             node = node.right;
         }
-        NodeOffset response = new NodeOffset();
+        NodeOffset response;
 
         while (true) {
             if (node.getValidDataSize() > 0) {
@@ -256,9 +261,14 @@ public class AVLTree {
             } else {
                 eden = new AVLNode(message);
                 //上一个字符所在Node的后继Node
-                AVLNode preNextNode = getSuccessorNode(preCharacterNode);
-                preNextNode.left = eden;
-                eden.parent = preNextNode;
+                AVLNode preNextNode =  getNextInsertPosNode(preCharacterNode);
+                if (preNextNode == preCharacterNode) {
+                    preNextNode.right = eden;
+                    eden.parent = preNextNode;
+                } else {
+                    preNextNode.left = eden;
+                    eden.parent = preNextNode;
+                }
                 //更新size和height
                 update(preNextNode);
                 fullRebalance(preNextNode);
@@ -271,34 +281,53 @@ public class AVLTree {
                 eden = new AVLNode(message);
 
                 //上一个字符所在Node的后继Node
-                AVLNode preNextNode = getSuccessorNode(preCharacterNode);
-                preNextNode.left = eden;
-                eden.parent = preNextNode;
+                AVLNode preCharacterNodeNextNode = getNextInsertPosNode(preCharacterNode);
+                if (preCharacterNodeNextNode == preCharacterNode) {
+                    preCharacterNodeNextNode.right = eden;
+                    eden.parent = preCharacterNodeNextNode;
+                } else {
+                    preCharacterNodeNextNode.left = eden;
+                    eden.parent = preCharacterNodeNextNode;
+                }
                 //更新size和height
-                update(preNextNode);
-                fullRebalance(preNextNode);
+                update(preCharacterNodeNextNode);
+                fullRebalance(preCharacterNodeNextNode);
 
             //如果要插入的位置处于Node的字符的中间，则Node分裂，更新原Node，并将分裂后的节点插入到原来节点的下一个节点，
             //再将该字符new一个新的节点
             } else {
+                eden = new AVLNode(message);
+
                 int begin = preCharacterNodeOffset.getOffset();
                 int end = preCharacterNode.getAllDataSize();
                 AVLNode backSplitNode = preCharacterNode.subAVLNode(begin, end);
                 preCharacterNode.frontSplit(begin);
                 //更新自该Node到root的所有节点的TreeSize
                 update(preCharacterNode);
-                AVLNode nextNode = getSuccessorNode(preCharacterNode);
-                nextNode.left = backSplitNode;
-                backSplitNode.parent = nextNode;
-                update(nextNode);
-                fullRebalance(nextNode);
+
+                AVLNode preCharacterNodeNextNode = getNextInsertPosNode(preCharacterNode);
+                if (preCharacterNodeNextNode == preCharacterNode) {
+                    preCharacterNodeNextNode.right = backSplitNode;
+                    backSplitNode.parent = preCharacterNodeNextNode;
+                } else {
+                    preCharacterNodeNextNode.left = backSplitNode;
+                    backSplitNode.parent = preCharacterNodeNextNode;
+                }
+
+                update(preCharacterNodeNextNode);
+                fullRebalance(preCharacterNodeNextNode);
 
                 eden = new AVLNode(message);
-                nextNode = getSuccessorNode(preCharacterNode);
-                nextNode.left = eden;
-                eden.parent = nextNode;
-                update(nextNode);
-                fullRebalance(nextNode);
+                preCharacterNodeNextNode = getNextInsertPosNode(preCharacterNode);
+                if (preCharacterNodeNextNode == preCharacterNode) {
+                    preCharacterNodeNextNode.right = backSplitNode;
+                    backSplitNode.parent = preCharacterNodeNextNode;
+                } else {
+                    preCharacterNodeNextNode.left = backSplitNode;
+                    backSplitNode.parent = preCharacterNodeNextNode;
+                }
+                update(preCharacterNodeNextNode);
+                fullRebalance(preCharacterNodeNextNode);
             }
         }
     }
@@ -365,6 +394,7 @@ public class AVLTree {
 
     /**
      * 返回直接后继字符，无论是否删除
+     * 用于读取服务
      * @param nodeOffset
      * @return
      */
@@ -400,6 +430,11 @@ public class AVLTree {
         return response;
     }
 
+    /**
+     * 获取上一个字符对应的NodeOffset
+     * @param nodeOffset
+     * @return
+     */
     public NodeOffset predecessor(NodeOffset nodeOffset) {
         if (nodeOffset.getNode() == null) {
             return null;
@@ -469,4 +504,34 @@ public class AVLTree {
         }
         return node;
     }
+
+    /**
+     * 如果要往某个节点插入一个节点，则调用此函数，获得正确的插入位置，使用getSuccessorNode是一个
+     * 读入操作，可能会返回该节点的父亲节点或者祖先节点。此函数是为写入操作进行服务的。
+     * @param node
+     * @return
+     */
+    public AVLNode getNextInsertPosNode(AVLNode node) {
+        AVLNode p = node.right;
+        //如果该节点为空
+        if (p == null) {
+            return node;
+        }
+        while (p != null) {
+            p = p.left;
+        }
+        return p;
+    }
+
+    public AVLNode getPreInsertPos(AVLNode node) {
+        AVLNode p = node.left;
+        if (p == null) {
+            return node;
+        }
+        while (p != null) {
+            p = p.right;
+        }
+        return p;
+    }
+
 }

@@ -4,8 +4,7 @@ import org.example.jason.avl3.pojo.CharacterMessage;
 import org.example.jason.avl3.pojo.Gid;
 import org.example.jason.avl3.pojo.NodeOffset;
 
-import java.util.HashMap;
-import java.util.Map;
+import java.util.*;
 
 public class AVLTree {
 
@@ -23,6 +22,10 @@ public class AVLTree {
         gidToNodeOffset = new HashMap<>();
     }
 
+    public AVLNode getRoot() {
+        return root;
+    }
+
     public int getHeight(AVLNode node) {
         if (node == null)
             return 0;
@@ -35,6 +38,7 @@ public class AVLTree {
         }
         return node.getTreeSize();
     }
+
 
     public int getAllDataSize(AVLNode node) {
         if (node == null) {
@@ -107,13 +111,13 @@ public class AVLTree {
         if (node == null) {
             return;
         }
-        node.setHeight(max(getHeight(node.left), getHeight(node.right)));
-        node.setTreeSize(getTreeSize(node.left) + getTreeSize(node.right));
+        node.setHeight(1 + max(getHeight(node.left), getHeight(node.right)));
+        node.setTreeSize(getTreeSize(node.left) + getTreeSize(node.right) + getValidDataSize(node));
 
         AVLNode p = node.parent;
         while (p != null) {
-            p.setHeight(max(getHeight(p.left), getHeight(p.right)));
-            p.setTreeSize(getTreeSize(p.left) + getTreeSize(p.right));
+            p.setHeight(1 + max(getHeight(p.left), getHeight(p.right)));
+            p.setTreeSize(getTreeSize(p.left) + getTreeSize(p.right) + getValidDataSize(p));
             p = p.parent;
         }
     }
@@ -139,20 +143,29 @@ public class AVLTree {
 
         AVLNode right = node.right;
         AVLNode rightLeft = right.left;
+        AVLNode nodeParent = node.parent;
 
         node.right = rightLeft;
-        rightLeft.parent = right;
+        if (rightLeft != null) {
+            rightLeft.parent = node;
+        }
 
         right.left = node;
         node.parent = right;
 
-        //注意update的顺序，自底向上update
-        update(node);
-        update(right);
+        right.parent = nodeParent;
+        if (nodeParent != null) {
+            nodeParent.right = right;
+        }
 
+        //更新root必须放在两个update之前！！更新依赖于正确的根节点
         if (isRoot) {
             this.root = right;
         }
+
+        //注意update的顺序，自底向上update
+        update(node);
+        update(right);
 
         return right;
     }
@@ -166,19 +179,29 @@ public class AVLTree {
 
         AVLNode left = node.left;
         AVLNode leftRight = left.right;
+        AVLNode nodeParent = node.parent;
 
         node.left = leftRight;
-        leftRight.parent = node;
+        if (leftRight != null) {
+            leftRight.parent = node;
+        }
 
         left.right = node;
         node.parent = left;
 
-        update(node);
-        update(left);
+        left.parent = nodeParent;
+        if (nodeParent != null) {
+            nodeParent.left = left;
+        }
 
+        //更新root必须放在两个update之前！！
         if (isRoot) {
             this.root = left;
         }
+
+        update(node);
+        update(left);
+
         return left;
     }
 
@@ -197,8 +220,6 @@ public class AVLTree {
 
                 node = leftRotation(node);
             }
-            //更新新节点的parent
-            node.parent = parent;
         } else if (balance < -1) {
             //如果左子树高
             if (getHeight(node.left.left) > getHeight(node.left.right)) {
@@ -211,8 +232,6 @@ public class AVLTree {
 
                 node = rightRotation(node);
             }
-            //更新新节点的parent
-            node.parent = parent;
         }
 
         return node;
@@ -233,6 +252,7 @@ public class AVLTree {
     public void insertByPos(int pos, CharacterMessage message) {
         if (root == null) {
             root = new AVLNode(message);
+            return;
         }
         AVLNode eden;
 
@@ -257,7 +277,8 @@ public class AVLTree {
             //如果数组没满
             if (preCharacterNode.getAllDataSize() < AVLNode.SPACE_SIZE) {
                 preCharacterNode.insertCharacter(preCharacterNodeOffset.getOffset() + 1, message);
-                //如果数组是满的，则需要new一个新的Node并插入到下一个位置
+                update(preCharacterNode);
+            //如果数组是满的，则需要new一个新的Node并插入到下一个位置
             } else {
                 eden = new AVLNode(message);
                 //上一个字符所在Node的后继Node
@@ -296,9 +317,8 @@ public class AVLTree {
             //如果要插入的位置处于Node的字符的中间，则Node分裂，更新原Node，并将分裂后的节点插入到原来节点的下一个节点，
             //再将该字符new一个新的节点
             } else {
-                eden = new AVLNode(message);
-
-                int begin = preCharacterNodeOffset.getOffset();
+                //注意此处的 +1
+                int begin = preCharacterNodeOffset.getOffset() + 1;
                 int end = preCharacterNode.getAllDataSize();
                 AVLNode backSplitNode = preCharacterNode.subAVLNode(begin, end);
                 preCharacterNode.frontSplit(begin);
@@ -320,11 +340,11 @@ public class AVLTree {
                 eden = new AVLNode(message);
                 preCharacterNodeNextNode = getNextInsertPosNode(preCharacterNode);
                 if (preCharacterNodeNextNode == preCharacterNode) {
-                    preCharacterNodeNextNode.right = backSplitNode;
-                    backSplitNode.parent = preCharacterNodeNextNode;
+                    preCharacterNodeNextNode.right = eden;
+                    eden.parent = preCharacterNodeNextNode;
                 } else {
-                    preCharacterNodeNextNode.left = backSplitNode;
-                    backSplitNode.parent = preCharacterNodeNextNode;
+                    preCharacterNodeNextNode.left = eden;
+                    eden.parent = preCharacterNodeNextNode;
                 }
                 update(preCharacterNodeNextNode);
                 fullRebalance(preCharacterNodeNextNode);
@@ -338,7 +358,8 @@ public class AVLTree {
      */
     public void deleteByPos(int pos) {
         AVLNode node = getNodeByPos(root, pos);
-        int validIndex = pos - node.left.getTreeSize();
+        int validIndex = getValidIndexByPos(root, pos);
+        //int validIndex = pos - node.left.getTreeSize();
         NodeOffset nodeOffset = node.getValidByIndex(validIndex);
         node.deleteCharacterByOffset(nodeOffset.getOffset());
 
@@ -363,9 +384,12 @@ public class AVLTree {
      * @return
      */
     public NodeOffset getNodeOffsetByPos(int pos) {
+        if (pos >= root.treeSize || pos < 0) {
+            return null;
+        }
         AVLNode node = getNodeByPos(root, pos);
         NodeOffset response;
-        int validIndex = pos - node.left.getTreeSize();
+        int validIndex = getValidIndexByPos(root, pos);
         response = node.getValidByIndex(validIndex);
         return response;
     }
@@ -391,6 +415,21 @@ public class AVLTree {
         }
     }
 
+    public int getValidIndexByPos(AVLNode node, int pos) {
+        if (node == null) {
+            return 0;
+        }
+        int curValidDataSize = getValidDataSize(node);
+        int leftTreeSize = getTreeSize(node.left);
+        if (pos >= leftTreeSize && pos <= leftTreeSize + curValidDataSize - 1) {
+            return pos - leftTreeSize;
+        } else if (pos < leftTreeSize) {
+            return getValidIndexByPos(node.left, pos);
+        } else {
+            return getValidIndexByPos(node.right, pos - leftTreeSize - curValidDataSize);
+        }
+    }
+
 
     /**
      * 返回直接后继字符，无论是否删除
@@ -406,7 +445,6 @@ public class AVLTree {
         int offset = nodeOffset.getOffset();
 
         NodeOffset response = new NodeOffset();
-        int resOffset = 0;
         //获取node内数组的所有元素个数
         int allSize = node.getAllDataSize();
 
@@ -517,7 +555,7 @@ public class AVLTree {
         if (p == null) {
             return node;
         }
-        while (p != null) {
+        while (p.left != null) {
             p = p.left;
         }
         return p;
@@ -528,10 +566,61 @@ public class AVLTree {
         if (p == null) {
             return node;
         }
-        while (p != null) {
+        while (p.right != null) {
             p = p.right;
         }
         return p;
+    }
+
+    public void draw(AVLNode root, AVLNode flag) {
+        List<List<String>> tree = levelOrder(root, flag);
+        for (int i = 0; i < tree.size(); ++i) {
+            List<String> level = tree.get(i);
+            for (int j = 0; j < level.size(); ++j) {
+                System.out.print(level.get(j) + " ");
+            }
+            System.out.println();
+        }
+    }
+
+    public List<List<String>> levelOrder(AVLNode root, AVLNode flag) {
+        List<List<String>> list = new LinkedList<>();
+        if (root == null) {
+            return list;
+        }
+        ArrayDeque<AVLNode> deque = new ArrayDeque<>();
+        deque.addLast(root);
+
+        while (!deque.isEmpty()) {
+            int num = deque.size();
+            List<String> subList = new LinkedList<String>();
+            for (int i = 0; i < num; i++) {
+                AVLNode node = deque.removeFirst();
+                if (node == flag) {
+                    subList.add("_ ");
+                } else {
+                    if (node.left != null) {
+                        deque.addLast(node.left);
+                    } else {
+                        deque.addLast(flag);
+                    }
+                    if (node.right != null) {
+                        deque.addLast(node.right);
+                    } else {
+                        deque.addLast(flag);
+                    }
+                    StringBuilder sb = new StringBuilder();
+                    for (int j = 0; j < node.allDataSize; ++j) {
+                        if (!node.isDeleted(j)) {
+                            sb.append(node.text[j]);
+                        }
+                    }
+                    subList.add(sb.toString());
+                }
+            }
+            list.add(subList);
+        }
+        return list;
     }
 
 }

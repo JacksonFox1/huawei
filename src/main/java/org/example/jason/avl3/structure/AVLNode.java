@@ -8,7 +8,9 @@ import org.example.jason.avl3.pojo.NodeOffset;
 
 @Data
 public class AVLNode {
-    static final int SPACE_SIZE = 10;
+
+    //设置3只是为了方便测试，可以设置为8、10、16或者其他
+    static final int SPACE_SIZE = 3;
     //该节点初始元素的Gid，无论是否被删除
     Gid gid;
     //用于存储实际的字符数据，大小暂定为10

@@ -13,4 +13,8 @@ public class CharacterMessage {
     Gid leftOriginGid;
     Gid rightOriginGid;
 
+    public CharacterMessage(Character ch, Gid gid) {
+        this.character = ch;
+        this.gid = gid;
+    }
 }

@@ -181,24 +181,27 @@ public class AVLNode {
     }
 
     /**
-     * 在节点分裂时更新自身，采用安全的方式,擦除[offset, SPACE_SIZE]后的数据.
+     * 在节点分裂时更新自身，采用安全的方式,擦除[offset, SPACE_SIZE]的数据.
      * @param offset 假设为5，则保留下标为0至下标为4的节点
      */
     public void frontSplit(int offset) {
+        this.endRightOrigin = this.computeRightOriginGid(offset - 1);
+        this.treeSize = this.treeSize - this.allDataSize + offset;
+        this.allDataSize = offset;
+
         int validDataSize = 0;
         for (int i = offset; i < SPACE_SIZE; ++i) {
             text[i] = null;
             informations[i] = null;
         }
+
         for (int i = 0; i < offset; ++i) {
             if (!isDeleted(i)) {
                 validDataSize++;
             }
         }
-        this.treeSize = this.treeSize - this.allDataSize + offset;
         this.validDataSize = validDataSize;
-        this.allDataSize = offset;
-        this.endRightOrigin = informations[offset - 1].getRightOriginGid();
+
     }
 
     /**
@@ -229,10 +232,34 @@ public class AVLNode {
         eden.height = 1;
         eden.allDataSize = end - begin;
         eden.treeSize = end - begin;
-        eden.headOrigin = this.informations[begin].getLeftOriginGid();
-        eden.endRightOrigin = this.informations[end - 1].getRightOriginGid();
+        eden.headOrigin = this.computeLeftOriginGid(begin);
+        eden.endRightOrigin = this.computeRightOriginGid(end - 1);
+
 
         return eden;
+    }
+
+    public Gid computeLeftOriginGid(int offset) {
+        if (offset == 0) {
+            return this.headOrigin;
+        } else {
+            //获取初始元素的counter
+            Integer counter = this.gid.getCounter();
+            Integer clientId = this.gid.getClientId();
+            counter = counter + offset - 1;
+            return new Gid(clientId, counter);
+        }
+    }
+
+    public Gid computeRightOriginGid(int offset) {
+        if (offset == this.allDataSize - 1) {
+            return this.endRightOrigin;
+        } else {
+            Integer counter = this.gid.getCounter();
+            Integer clientId = this.gid.getClientId();
+            counter = counter + offset + 1;
+            return new Gid(clientId, counter);
+        }
     }
 
 }

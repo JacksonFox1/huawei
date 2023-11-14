@@ -23,7 +23,6 @@ public class AVLNode {
     int validDataSize;
     //数组中所有的数据大小，即包括被删除的数据
     int allDataSize;
-
     //以该节点为根节点的树的有效值的个数!!用于根据pos对节点进行搜索
     int treeSize;
     //左节点
@@ -125,7 +124,8 @@ public class AVLNode {
      */
     public NodeOffset getValidByIndex(int validIndex) {
         if (validIndex < 0) {
-            return null;
+            //由返回空对象改为返回无意义对象
+            return new NodeOffset();
         }
         //正常流程
         AVLNode node = this;

@@ -7,17 +7,15 @@ import org.example.jason.avl3.pojo.NodeOffset;
 import java.util.*;
 
 public class AVLTree {
-
-    //虚拟树的头节点，参考红黑树的实现
-    AVLNode virtualRoot;
-
+    //维护根节点
     AVLNode root;
-
+    //虚拟树的头节点，参考红黑树的实现
+//    AVLNode virtualRoot;
     //暂未使用，后续开发
     Map<Gid, NodeOffset> gidToNodeOffset;
 
     public AVLTree() {
-        virtualRoot = new AVLNode();
+//        virtualRoot = new AVLNode();
         root = null;
         gidToNodeOffset = new HashMap<>();
     }
@@ -77,6 +75,12 @@ public class AVLTree {
         NodeOffset response = new NodeOffset();
 
         while (true) {
+            //添加判空逻辑
+//            if (node == null) {
+//                response.setNode(null);
+//                response.setOffset(-1);
+//                return response;
+//            }
             if (node.getValidDataSize() > 0) {
                 response = node.getValidByIndex(0);
                 return response;
@@ -94,11 +98,19 @@ public class AVLTree {
         while (node.right != null) {
             node = node.right;
         }
-        NodeOffset response;
+        NodeOffset response = new NodeOffset();
 
         while (true) {
+            //添加判空逻辑
+//            if (node == null) {
+//                response.setNode(null);
+//                response.setOffset(-1);
+//                return response;
+//            }
             if (node.getValidDataSize() > 0) {
                 response = node.getValidByIndex(node.validDataSize - 1);
+                //设置虚拟end，即指向最后一个节点的下一个节点
+                response.setOffset(response.getOffset() + 1);
                 return response;
             } else {
                 node = getPredecessorNode(node);
@@ -154,6 +166,7 @@ public class AVLTree {
         node.parent = right;
 
         right.parent = nodeParent;
+        //产生bug，不一定是父节点的右节点
         if (nodeParent != null) {
             nodeParent.right = right;
         }
@@ -242,8 +255,8 @@ public class AVLTree {
      * 三种插入情况：
      * * 找到了待插入的Node，发现Gid和该Node的末尾字符是连续的，直接修改Node属性
      * * 找到了待插入的Node，发现pos正好处于末尾字符的下一位，但是Gid不连续，此时找到该Node的后继Node，并在其左子树上new新Node，并对树结构进行维护
-     * * 找到了待插入的Node，发现pos正好处于末尾字符中间，分裂原Node为a，b，将b插入到下一个位置，维护树的平衡，并再new一个新节点c，再插入到a的下一个位置，维护书店
-     * 维护树的平衡
+     * * 找到了待插入的Node，发现pos正好处于末尾字符中间，分裂原Node为a，b，将b插入到下一个位置，维护树的平衡，并再new一个新节点c，再插入到a的下一个位置，维护
+     * * 维护树的平衡
      * 之所以不采用递归的方式进行插入，是因为后续存在根据Gid找到节点的需求，递归从根本上无法实现
      *
      * 可能出现的问题：可能在某个节点的第一个字符处插入
@@ -269,6 +282,10 @@ public class AVLTree {
         //找到上一个字符的所处的Node和NodeOffset
         AVLNode preCharacterNode = getNodeByPos(root, pos - 1);
         NodeOffset preCharacterNodeOffset = getNodeOffsetByPos(pos - 1);
+        //debug:判空操作
+        if (preCharacterNodeOffset.getNode() == null) {
+            return;
+        }
         //获取上一个字符的Counter（无论是否被删除）
         int preCounter = preCharacterNode.getGidCounterByOffset(preCharacterNodeOffset.getOffset());
         int messageCounter = message.getGid().getCounter();
@@ -358,6 +375,10 @@ public class AVLTree {
      */
     public void deleteByPos(int pos) {
         AVLNode node = getNodeByPos(root, pos);
+        //debug
+        if (node == null) {
+            return;
+        }
         int validIndex = getValidIndexByPos(root, pos);
         //int validIndex = pos - node.left.getTreeSize();
         NodeOffset nodeOffset = node.getValidByIndex(validIndex);
@@ -514,7 +535,8 @@ public class AVLTree {
                 node = node.left;
             }
         } else {
-            while (node.parent.left != node) {
+            //debug:判断非空操作
+            while (node != null && node.parent.left != node) {
                 node = node.parent;
                 if (node.parent == null) {
                     break;
@@ -532,7 +554,8 @@ public class AVLTree {
                 node = node.right;
             }
         } else {
-            while (node.parent.right != node) {
+            //debug:判断非空操作
+            while (node != null && node.parent.right != node) {
                 node = node.parent;
                 if (node.parent == null) {
                     break;

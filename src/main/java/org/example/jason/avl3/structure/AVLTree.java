@@ -167,9 +167,9 @@ public class AVLTree {
 
         right.parent = nodeParent;
         //产生bug，不一定是父节点的右节点
-        if (nodeParent != null) {
-            nodeParent.right = right;
-        }
+//        if (nodeParent != null) {
+//            nodeParent.right = right;
+//        }
 
         //更新root必须放在两个update之前！！更新依赖于正确的根节点
         if (isRoot) {
@@ -177,8 +177,8 @@ public class AVLTree {
         }
 
         //注意update的顺序，自底向上update
-        update(node);
-        update(right);
+//        update(node);
+//        update(right);
 
         return right;
     }
@@ -203,17 +203,17 @@ public class AVLTree {
         node.parent = left;
 
         left.parent = nodeParent;
-        if (nodeParent != null) {
-            nodeParent.left = left;
-        }
+//        if (nodeParent != null) {
+//            nodeParent.left = left;
+//        }
 
         //更新root必须放在两个update之前！！
         if (isRoot) {
             this.root = left;
         }
 
-        update(node);
-        update(left);
+//        update(node);
+//        update(left);
 
         return left;
     }
@@ -221,34 +221,120 @@ public class AVLTree {
     private AVLNode rebalance(AVLNode node, AVLNode parent) {
         node.height = 1 + max(getHeight(node.left), getHeight(node.right));
         int balance = getBalance(node);
+        AVLNode nodeParent = node.parent;
         if (balance > 1) {
             //如果右子树高
             if (getHeight(node.right.right) > getHeight(node.right.left)) {
                 //如果为RR不平衡
-                node = leftRotation(node);
+                boolean isLeftleaf = (nodeParent != null && nodeParent.left == node) ? true : false;
+                AVLNode newNode = leftRotation(node);
+                if (nodeParent != null) {
+                    if (isLeftleaf) {
+                        nodeParent.left = newNode;
+                    } else {
+                        nodeParent.right = newNode;
+                    }
+                }
+                update(node);
+                update(node.parent);
+
+                node = newNode;
             } else {
-                //如果为RF不平衡
+                //如果为RL不平衡
+                AVLNode oldNode = node.right;
                 node.right = rightRotation(node.right);
                 node.right.parent = node;
+                update(oldNode);
+                update(oldNode.left);
 
-                node = leftRotation(node);
+                boolean isLeftleaf = (nodeParent != null && nodeParent.left == node) ? true : false;
+                AVLNode newNode = leftRotation(node);
+                if (nodeParent != null) {
+                    if (isLeftleaf) {
+                        nodeParent.left = newNode;
+                    } else {
+                        nodeParent.right = newNode;
+                    }
+                }
+                update(node);
+                update(node.parent);
+
+                node = newNode;
             }
         } else if (balance < -1) {
             //如果左子树高
             if (getHeight(node.left.left) > getHeight(node.left.right)) {
                 //如果是LL不平衡
-                node = rightRotation(node);
+                boolean isLeftleaf = (nodeParent != null && nodeParent.left == node) ? true : false;
+                AVLNode newNode = rightRotation(node);
+                if (nodeParent != null) {
+                    if (isLeftleaf) {
+                        nodeParent.left = newNode;
+                    } else {
+                        nodeParent.right = newNode;
+                    }
+                }
+                update(node);
+                update(node.parent);
+
+                node = newNode;
             } else {
                 //如果是LR不平衡
+                AVLNode oldNode = node.left;
                 node.left = leftRotation(node.left);
                 node.left.parent = node;
+                update(oldNode);
+                update(oldNode.right);
 
-                node = rightRotation(node);
+                boolean isLeftleaf = (nodeParent != null && nodeParent.left == node) ? true : false;
+                AVLNode newNode = rightRotation(node);
+                if (nodeParent != null) {
+                    if (isLeftleaf) {
+                        nodeParent.left = newNode;
+                    } else {
+                        nodeParent.right = newNode;
+                    }
+                }
+                update(node);
+                update(node.parent);
+
+                node = newNode;
             }
         }
-
         return node;
     }
+
+//    private AVLNode rebalance(AVLNode node, AVLNode parent) {
+//        node.height = 1 + max(getHeight(node.left), getHeight(node.right));
+//        int balance = getBalance(node);
+//        if (balance > 1) {
+//            //如果右子树高
+//            if (getHeight(node.right.right) > getHeight(node.right.left)) {
+//                //如果为RR不平衡
+//                node = leftRotation(node);
+//            } else {
+//                //如果为RF不平衡
+//                node.right = rightRotation(node.right);
+//                node.right.parent = node;
+//
+//                node = leftRotation(node);
+//            }
+//        } else if (balance < -1) {
+//            //如果左子树高
+//            if (getHeight(node.left.left) > getHeight(node.left.right)) {
+//                //如果是LL不平衡
+//                node = rightRotation(node);
+//            } else {
+//                //如果是LR不平衡
+//                node.left = leftRotation(node.left);
+//                node.left.parent = node;
+//
+//                node = rightRotation(node);
+//            }
+//        }
+//
+//        return node;
+//    }
 
 
     /**
